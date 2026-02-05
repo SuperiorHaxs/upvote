@@ -4,6 +4,15 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables (in reverse order of dependencies)
+DROP TABLE IF EXISTS streak_logs CASCADE;
+DROP TABLE IF EXISTS badges CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS upvotes CASCADE;
+DROP TABLE IF EXISTS votes CASCADE;
+DROP TABLE IF EXISTS arguments CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+
 -- Profiles table
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -88,14 +97,17 @@ CREATE TABLE IF NOT EXISTS streak_logs (
 -- Profiles: Users can read all, update own
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
 CREATE POLICY "Public profiles are viewable by everyone"
   ON profiles FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile"
   ON profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
@@ -103,23 +115,28 @@ CREATE POLICY "Users can insert own profile"
 -- Arguments: Anyone can read, authenticated users can create
 ALTER TABLE arguments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Arguments are viewable by everyone" ON arguments;
 CREATE POLICY "Arguments are viewable by everyone"
   ON arguments FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can create arguments" ON arguments;
 CREATE POLICY "Authenticated users can create arguments"
   ON arguments FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL);
 
+DROP POLICY IF EXISTS "Users can update own arguments" ON arguments;
 CREATE POLICY "Users can update own arguments"
   ON arguments FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Also allow anonymous arguments (no user_id required)
+DROP POLICY IF EXISTS "Allow anonymous argument inserts" ON arguments;
 CREATE POLICY "Allow anonymous argument inserts"
   ON arguments FOR INSERT
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow argument updates" ON arguments;
 CREATE POLICY "Allow argument updates"
   ON arguments FOR UPDATE
   USING (true);
@@ -127,10 +144,12 @@ CREATE POLICY "Allow argument updates"
 -- Votes
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Votes are viewable by everyone" ON votes;
 CREATE POLICY "Votes are viewable by everyone"
   ON votes FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can vote" ON votes;
 CREATE POLICY "Authenticated users can vote"
   ON votes FOR INSERT
   WITH CHECK (auth.uid() = user_id);
@@ -138,10 +157,12 @@ CREATE POLICY "Authenticated users can vote"
 -- Upvotes
 ALTER TABLE upvotes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Upvotes are viewable by everyone" ON upvotes;
 CREATE POLICY "Upvotes are viewable by everyone"
   ON upvotes FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can upvote" ON upvotes;
 CREATE POLICY "Authenticated users can upvote"
   ON upvotes FOR INSERT
   WITH CHECK (auth.uid() = user_id);
@@ -149,10 +170,12 @@ CREATE POLICY "Authenticated users can upvote"
 -- Comments
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Comments are viewable by everyone" ON comments;
 CREATE POLICY "Comments are viewable by everyone"
   ON comments FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can comment" ON comments;
 CREATE POLICY "Authenticated users can comment"
   ON comments FOR INSERT
   WITH CHECK (auth.uid() = user_id);
@@ -160,6 +183,7 @@ CREATE POLICY "Authenticated users can comment"
 -- Badges
 ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Badges are viewable by everyone" ON badges;
 CREATE POLICY "Badges are viewable by everyone"
   ON badges FOR SELECT
   USING (true);
@@ -167,10 +191,12 @@ CREATE POLICY "Badges are viewable by everyone"
 -- Streak logs
 ALTER TABLE streak_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own streak logs" ON streak_logs;
 CREATE POLICY "Users can view own streak logs"
   ON streak_logs FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own streak logs" ON streak_logs;
 CREATE POLICY "Users can insert own streak logs"
   ON streak_logs FOR INSERT
   WITH CHECK (auth.uid() = user_id);
