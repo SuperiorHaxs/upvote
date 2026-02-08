@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
-import BottomNav from "@/components/BottomNav"
+import AppShell from "@/components/AppShell"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,12 +20,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-[#0F0F0F] text-white antialiased`}>
+      <body className={`${inter.className} bg-[#030303] text-[#D7DADC] antialiased`}>
         <AuthProvider>
-          <main className="min-h-screen pb-20">
-            {children}
-          </main>
-          <BottomNav />
+          <AppShell>{children}</AppShell>
         </AuthProvider>
       </body>
     </html>

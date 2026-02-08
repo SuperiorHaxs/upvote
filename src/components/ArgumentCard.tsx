@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Clock, Heart, Users } from 'lucide-react'
+import { Clock, MessageSquare, ArrowBigUp, Users } from 'lucide-react'
 import { Argument, CATEGORY_COLORS } from '@/lib/types'
 
 interface ArgumentCardProps {
@@ -31,67 +31,116 @@ function getTimeRemaining(endsAt: string): string {
   return `${minutes}m left`
 }
 
+function formatTimeAgo(date: string): string {
+  const now = new Date()
+  const then = new Date(date)
+  const diff = now.getTime() - then.getTime()
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  if (hours < 1) return 'just now'
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return `${Math.floor(days / 30)}mo ago`
+}
+
 export default function ArgumentCard({ argument, showVoteCounts = true }: ArgumentCardProps) {
   const totalVotes = argument.my_votes + argument.their_votes
   const timeRemaining = getTimeRemaining(argument.ends_at)
   const isEnded = argument.is_closed || timeRemaining === 'Ended'
+  const myPct = totalVotes > 0 ? Math.round((argument.my_votes / totalVotes) * 100) : 50
+  const theirPct = totalVotes > 0 ? 100 - myPct : 50
 
   return (
-    <Link href={`/argument/${argument.id}`}>
-      <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-4 hover:border-[#3A3A3A] transition-colors">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <span className={`text-xs px-2 py-1 rounded-full ${CATEGORY_COLORS[argument.category]}`}>
-            {argument.category}
-          </span>
-          <span className={`text-xs flex items-center gap-1 ${isEnded ? 'text-gray-500' : 'text-gray-400'}`}>
-            <Clock className="w-3 h-3" />
-            {isEnded ? (
-              argument.winner ? (
-                <span className={argument.winner === 'my' ? 'text-[#22C55E]' : 'text-[#EF4444]'}>
-                  {argument.winner === 'my' ? "You're Right!" : "They're Right!"}
+    <Link href={`/argument/${argument.id}`} className="block">
+      <article className="bg-[#1A1A1B] border border-[#343536] rounded-md hover:border-[#4A4A4C] transition-colors">
+        {/* Vote column + Content */}
+        <div className="flex">
+          {/* Left vote indicator */}
+          <div className="w-10 flex-shrink-0 bg-[#161617] rounded-l-md flex flex-col items-center py-3 gap-1">
+            <ArrowBigUp className="w-5 h-5 text-[#818384] hover:text-[#FF4500]" />
+            <span className="text-xs font-bold text-[#D7DADC]">{argument.upvote_count}</span>
+          </div>
+
+          {/* Main content */}
+          <div className="flex-1 p-2 pl-2 min-w-0">
+            {/* Meta line */}
+            <div className="flex items-center gap-1.5 text-xs text-[#818384] mb-1 flex-wrap">
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${CATEGORY_COLORS[argument.category]}`}>
+                {argument.category}
+              </span>
+              <span>•</span>
+              {!argument.is_anonymous && argument.profiles ? (
+                <span>
+                  Posted by <span className="hover:underline">u/{argument.profiles.username}</span>
                 </span>
               ) : (
-                'Ended'
-              )
-            ) : (
-              timeRemaining
+                <span>Posted anonymously</span>
+              )}
+              <span>•</span>
+              <span>{formatTimeAgo(argument.created_at)}</span>
+              {!isEnded && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-0.5 text-[#0079D3]">
+                    <Clock className="w-3 h-3" />
+                    {timeRemaining}
+                  </span>
+                </>
+              )}
+              {isEnded && argument.winner && (
+                <>
+                  <span>•</span>
+                  <span className={argument.winner === 'my' ? 'text-[#46D160] font-medium' : 'text-[#EA3C3C] font-medium'}>
+                    Verdict: {argument.winner === 'my' ? "OP is Right" : "They're Right"}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Title */}
+            <h3 className="text-[15px] font-semibold text-[#D7DADC] mb-1.5 leading-snug line-clamp-2">
+              {argument.title}
+            </h3>
+
+            {/* Vote progress bar */}
+            {showVoteCounts && totalVotes > 0 && (
+              <div className="mb-2">
+                <div className="flex h-1.5 rounded-full overflow-hidden bg-[#343536]">
+                  <div
+                    className="bg-[#46D160] transition-all duration-300"
+                    style={{ width: `${myPct}%` }}
+                  />
+                  <div
+                    className="bg-[#EA3C3C] transition-all duration-300"
+                    style={{ width: `${theirPct}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-0.5 text-[10px]">
+                  <span className="text-[#46D160]">{myPct}% My Take</span>
+                  <span className="text-[#EA3C3C]">{theirPct}% Their Take</span>
+                </div>
+              </div>
             )}
-          </span>
-        </div>
 
-        <h3 className="font-semibold text-white mb-3 line-clamp-2">{argument.title}</h3>
-
-        {showVoteCounts && totalVotes > 0 && (
-          <div className="mb-3">
-            <div className="flex h-2 rounded-full overflow-hidden bg-[#2A2A2A]">
-              <div
-                className="bg-[#22C55E] transition-all duration-300"
-                style={{ width: `${(argument.my_votes / totalVotes) * 100}%` }}
-              />
-              <div
-                className="bg-[#EF4444] transition-all duration-300"
-                style={{ width: `${(argument.their_votes / totalVotes) * 100}%` }}
-              />
+            {/* Action bar */}
+            <div className="flex items-center gap-3 text-xs text-[#818384]">
+              <span className="flex items-center gap-1 hover:bg-[#272729] px-1.5 py-1 rounded transition-colors">
+                <Users className="w-3.5 h-3.5" />
+                {totalVotes} votes
+              </span>
+              <span className="flex items-center gap-1 hover:bg-[#272729] px-1.5 py-1 rounded transition-colors">
+                <MessageSquare className="w-3.5 h-3.5" />
+                Comments
+              </span>
+              {isEnded && (
+                <span className="flex items-center gap-1 px-1.5 py-1 text-[#818384]">
+                  Closed
+                </span>
+              )}
             </div>
           </div>
-        )}
-
-        <div className="flex items-center justify-between text-sm text-gray-400">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              {totalVotes} votes
-            </span>
-            <span className="flex items-center gap-1">
-              <Heart className="w-4 h-4" />
-              {argument.upvote_count}
-            </span>
-          </div>
-          {!argument.is_anonymous && argument.profiles && (
-            <span className="text-xs">@{argument.profiles.username}</span>
-          )}
         </div>
-      </div>
+      </article>
     </Link>
   )
 }

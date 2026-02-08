@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Clock, Heart, Share2, Send, Check } from 'lucide-react'
+import { ArrowLeft, Clock, ArrowBigUp, Share2, Send, Check, MessageSquare, Bookmark } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -28,6 +28,18 @@ function getTimeRemaining(endsAt: string): string {
   }
 
   return `${minutes}m left`
+}
+
+function formatTimeAgo(date: string): string {
+  const now = new Date()
+  const then = new Date(date)
+  const diff = now.getTime() - then.getTime()
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  if (hours < 1) return 'just now'
+  if (hours < 24) return `${hours} hours ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days} days ago`
+  return `${Math.floor(days / 30)} months ago`
 }
 
 export default function ArgumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -221,17 +233,17 @@ export default function ArgumentDetailPage({ params }: { params: Promise<{ id: s
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-2 border-[#22C55E] border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-[#0079D3] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   if (!argument_) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center">
-        <p className="text-xl mb-2">Argument not found</p>
-        <Link href="/" className="text-[#22C55E]">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <p className="text-xl text-[#D7DADC] mb-2">Argument not found</p>
+        <Link href="/" className="text-[#0079D3] hover:underline">
           Back to Home
         </Link>
       </div>
@@ -245,164 +257,228 @@ export default function ArgumentDetailPage({ params }: { params: Promise<{ id: s
   const isEnded = argument_.is_closed || timeRemaining === 'Ended'
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <Link href="/" className="p-2 -ml-2">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <button
-          onClick={handleShare}
-          className="p-2 -mr-2 text-gray-400 hover:text-white transition-colors"
+    <div className="layout-container">
+      <div className="main-content">
+        {/* Back link */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm text-[#0079D3] hover:text-[#1484D7] mb-3 transition-colors"
         >
-          {copied ? <Check className="w-5 h-5 text-[#22C55E]" /> : <Share2 className="w-5 h-5" />}
-        </button>
-      </div>
+          <ArrowLeft className="w-4 h-4" />
+          Back to feed
+        </Link>
 
-      {/* Argument Card */}
-      <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-4 mb-4">
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <span className={`text-xs px-2 py-1 rounded-full ${CATEGORY_COLORS[argument_.category]}`}>
-            {argument_.category}
-          </span>
-          <span className={`text-xs flex items-center gap-1 ${isEnded ? 'text-gray-500' : 'text-gray-400'}`}>
-            <Clock className="w-3 h-3" />
-            {isEnded ? (
-              argument_.winner ? (
-                <span className={argument_.winner === 'my' ? 'text-[#22C55E]' : 'text-[#EF4444]'}>
-                  Verdict: {argument_.winner === 'my' ? "You're Right!" : "They're Right!"}
+        {/* Post card */}
+        <article className="bg-[#1A1A1B] border border-[#343536] rounded-md overflow-hidden">
+          <div className="flex">
+            {/* Vote sidebar */}
+            <div className="w-10 flex-shrink-0 bg-[#161617] flex flex-col items-center py-3 gap-1">
+              <button
+                onClick={handleUpvote}
+                className={`p-0.5 rounded transition-colors ${
+                  hasUpvoted ? 'text-[#FF4500]' : 'text-[#818384] hover:text-[#FF4500]'
+                }`}
+              >
+                <ArrowBigUp className={`w-6 h-6 ${hasUpvoted ? 'fill-[#FF4500]' : ''}`} />
+              </button>
+              <span className={`text-xs font-bold ${hasUpvoted ? 'text-[#FF4500]' : 'text-[#D7DADC]'}`}>
+                {argument_.upvote_count}
+              </span>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 p-3 min-w-0">
+              {/* Meta */}
+              <div className="flex items-center gap-1.5 text-xs text-[#818384] mb-2 flex-wrap">
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${CATEGORY_COLORS[argument_.category]}`}>
+                  {argument_.category}
                 </span>
+                <span>•</span>
+                {!argument_.is_anonymous && argument_.profiles ? (
+                  <span>Posted by <span className="text-[#D7DADC]">u/{argument_.profiles.username}</span></span>
+                ) : (
+                  <span>Posted anonymously</span>
+                )}
+                <span>•</span>
+                <span>{formatTimeAgo(argument_.created_at)}</span>
+                <span>•</span>
+                <span className={`flex items-center gap-0.5 ${isEnded ? 'text-[#818384]' : 'text-[#0079D3]'}`}>
+                  <Clock className="w-3 h-3" />
+                  {isEnded ? (
+                    argument_.winner ? (
+                      <span className={argument_.winner === 'my' ? 'text-[#46D160] font-medium' : 'text-[#EA3C3C] font-medium'}>
+                        Verdict: {argument_.winner === 'my' ? "OP is Right" : "They're Right"}
+                      </span>
+                    ) : (
+                      'Ended'
+                    )
+                  ) : (
+                    timeRemaining
+                  )}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-xl font-semibold text-[#D7DADC] mb-4">{argument_.title}</h1>
+
+              {/* Both takes */}
+              <div className="space-y-3 mb-4">
+                <div className={`p-3 rounded-lg border ${hasVoted && votedSide === 'my' ? 'bg-[#46D160]/10 border-[#46D160]/30' : 'bg-[#272729] border-[#343536]'}`}>
+                  <div className={`text-xs uppercase tracking-wider mb-1.5 font-semibold ${hasVoted && votedSide === 'my' ? 'text-[#46D160]' : 'text-[#818384]'}`}>
+                    My Take
+                  </div>
+                  <p className="text-sm text-[#D7DADC] leading-relaxed">{argument_.my_take}</p>
+                </div>
+                <div className={`p-3 rounded-lg border ${hasVoted && votedSide === 'their' ? 'bg-[#EA3C3C]/10 border-[#EA3C3C]/30' : 'bg-[#272729] border-[#343536]'}`}>
+                  <div className={`text-xs uppercase tracking-wider mb-1.5 font-semibold ${hasVoted && votedSide === 'their' ? 'text-[#EA3C3C]' : 'text-[#818384]'}`}>
+                    Their Take
+                  </div>
+                  <p className="text-sm text-[#D7DADC] leading-relaxed">{argument_.their_take}</p>
+                </div>
+              </div>
+
+              {/* Vote buttons or results */}
+              {!hasVoted && !isEnded ? (
+                <div className="flex gap-3 mb-4">
+                  <button
+                    onClick={() => handleVote('my')}
+                    className="flex-1 py-2.5 bg-[#46D160] hover:bg-[#46D160]/80 rounded-md font-semibold text-sm text-white transition-colors"
+                  >
+                    OP is Right
+                  </button>
+                  <button
+                    onClick={() => handleVote('their')}
+                    className="flex-1 py-2.5 bg-[#EA3C3C] hover:bg-[#EA3C3C]/80 rounded-md font-semibold text-sm text-white transition-colors"
+                  >
+                    They're Right
+                  </button>
+                </div>
               ) : (
-                'Ended'
-              )
-            ) : (
-              timeRemaining
-            )}
-          </span>
-        </div>
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-[#46D160] font-medium">{myPercentage}% OP is Right</span>
+                    <span className="text-[#EA3C3C] font-medium">{theirPercentage}% They're Right</span>
+                  </div>
+                  <div className="flex h-2 rounded-full overflow-hidden bg-[#343536]">
+                    <div
+                      className="bg-[#46D160] transition-all duration-500"
+                      style={{ width: `${myPercentage}%` }}
+                    />
+                    <div
+                      className="bg-[#EA3C3C] transition-all duration-500"
+                      style={{ width: `${theirPercentage}%` }}
+                    />
+                  </div>
+                  <div className="text-center text-[#818384] text-xs mt-1.5">
+                    {totalVotes} votes
+                  </div>
+                </div>
+              )}
 
-        <h1 className="text-xl font-bold mb-4">{argument_.title}</h1>
-
-        {/* Both Takes */}
-        <div className="space-y-4 mb-4">
-          <div className={`p-3 rounded-lg ${hasVoted && votedSide === 'my' ? 'bg-[#22C55E]/10 border border-[#22C55E]/30' : 'bg-[#0F0F0F]'}`}>
-            <div className={`text-xs uppercase tracking-wider mb-2 ${hasVoted && votedSide === 'my' ? 'text-[#22C55E]' : 'text-gray-500'}`}>
-              My Take
+              {/* Action bar */}
+              <div className="flex items-center gap-1 pt-2 border-t border-[#343536] text-[#818384]">
+                <span className="flex items-center gap-1 text-xs px-2 py-1.5 rounded hover:bg-[#272729] transition-colors">
+                  <MessageSquare className="w-4 h-4" />
+                  {comments.length} Comments
+                </span>
+                <button
+                  onClick={handleShare}
+                  className="flex items-center gap-1 text-xs px-2 py-1.5 rounded hover:bg-[#272729] transition-colors"
+                >
+                  {copied ? <Check className="w-4 h-4 text-[#46D160]" /> : <Share2 className="w-4 h-4" />}
+                  {copied ? 'Copied!' : 'Share'}
+                </button>
+                <span className="flex items-center gap-1 text-xs px-2 py-1.5 rounded hover:bg-[#272729] transition-colors cursor-pointer">
+                  <Bookmark className="w-4 h-4" />
+                  Save
+                </span>
+              </div>
             </div>
-            <p className="text-gray-300">{argument_.my_take}</p>
           </div>
-          <div className={`p-3 rounded-lg ${hasVoted && votedSide === 'their' ? 'bg-[#EF4444]/10 border border-[#EF4444]/30' : 'bg-[#0F0F0F]'}`}>
-            <div className={`text-xs uppercase tracking-wider mb-2 ${hasVoted && votedSide === 'their' ? 'text-[#EF4444]' : 'text-gray-500'}`}>
-              Their Take
-            </div>
-            <p className="text-gray-300">{argument_.their_take}</p>
-          </div>
-        </div>
+        </article>
 
-        {/* Vote buttons or results */}
-        {!hasVoted && !isEnded ? (
-          <div className="flex gap-3 mb-4">
-            <button
-              onClick={() => handleVote('my')}
-              className="flex-1 py-3 bg-[#22C55E] hover:bg-[#22C55E]/80 rounded-xl font-semibold transition-colors"
-            >
-              You're Right
-            </button>
-            <button
-              onClick={() => handleVote('their')}
-              className="flex-1 py-3 bg-[#EF4444] hover:bg-[#EF4444]/80 rounded-xl font-semibold transition-colors"
-            >
-              They're Right
-            </button>
-          </div>
-        ) : (
+        {/* Comments section */}
+        <div className="bg-[#1A1A1B] border border-[#343536] border-t-0 rounded-b-md p-3">
+          {/* Comment Input */}
           <div className="mb-4">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-[#22C55E]">{myPercentage}% You're Right</span>
-              <span className="text-[#EF4444]">{theirPercentage}% They're Right</span>
-            </div>
-            <div className="flex h-3 rounded-full overflow-hidden bg-[#2A2A2A]">
-              <div
-                className="bg-[#22C55E] transition-all duration-500"
-                style={{ width: `${myPercentage}%` }}
+            <p className="text-xs text-[#818384] mb-2">
+              Comment as {user ? <span className="text-[#0079D3]">u/{profile?.username}</span> : <Link href="/auth" className="text-[#0079D3] hover:underline">Log in</Link>}
+            </p>
+            <form onSubmit={handleComment}>
+              <textarea
+                placeholder="What are your thoughts?"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                rows={3}
+                className="w-full bg-[#272729] border border-[#343536] rounded-md py-2 px-3 text-sm text-[#D7DADC] placeholder-[#818384] resize-none focus:border-[#0079D3]"
               />
-              <div
-                className="bg-[#EF4444] transition-all duration-500"
-                style={{ width: `${theirPercentage}%` }}
-              />
-            </div>
-            <div className="text-center text-gray-500 text-xs mt-2">
-              {totalVotes} votes
-            </div>
+              <div className="flex justify-end mt-1">
+                <button
+                  type="submit"
+                  disabled={submittingComment || !newComment.trim()}
+                  className="px-4 py-1.5 bg-[#0079D3] hover:bg-[#1484D7] text-white text-xs font-semibold rounded-full disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Comment
+                </button>
+              </div>
+            </form>
           </div>
-        )}
 
-        {/* Upvote and meta */}
-        <div className="flex items-center justify-between pt-4 border-t border-[#2A2A2A]">
-          <button
-            onClick={handleUpvote}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              hasUpvoted
-                ? 'bg-red-500/20 text-red-500'
-                : 'bg-[#0F0F0F] text-gray-400 hover:text-white'
-            }`}
-          >
-            <Heart className={`w-5 h-5 ${hasUpvoted ? 'fill-red-500' : ''}`} />
-            <span>{argument_.upvote_count}</span>
-          </button>
-          {!argument_.is_anonymous && argument_.profiles && (
-            <span className="text-sm text-gray-500">@{argument_.profiles.username}</span>
+          {/* Comments List */}
+          {comments.length === 0 ? (
+            <p className="text-[#818384] text-center py-6 text-sm">No comments yet. Be the first!</p>
+          ) : (
+            <div className="space-y-4">
+              {comments.map((comment) => (
+                <div key={comment.id} className="flex gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-[#0079D3] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                    {comment.profiles?.username?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs font-medium text-[#D7DADC]">
+                        u/{comment.profiles?.username || 'Unknown'}
+                      </span>
+                      <span className="text-xs text-[#818384]">
+                        {formatTimeAgo(comment.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#D7DADC] leading-relaxed">{comment.content}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Comments */}
-      <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-4">
-        <h2 className="font-semibold mb-4">Comments ({comments.length})</h2>
-
-        {/* Comment Input */}
-        <form onSubmit={handleComment} className="flex gap-2 mb-4">
-          <input
-            type="text"
-            placeholder="Add a comment..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="flex-1 bg-[#0F0F0F] border border-[#2A2A2A] rounded-lg py-2 px-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#3A3A3A]"
-          />
-          <button
-            type="submit"
-            disabled={submittingComment || !newComment.trim()}
-            className="p-2 bg-[#22C55E] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </form>
-
-        {/* Comments List */}
-        {comments.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No comments yet</p>
-        ) : (
-          <div className="space-y-3">
-            {comments.map((comment) => (
-              <div key={comment.id} className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#2A2A2A] flex items-center justify-center text-sm font-bold flex-shrink-0">
-                  {comment.profiles?.username?.charAt(0).toUpperCase() || '?'}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium">
-                      @{comment.profiles?.username || 'Unknown'}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(comment.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-300">{comment.content}</p>
-                </div>
+      {/* Right sidebar - could add argument-specific sidebar here */}
+      <div className="right-sidebar hidden lg:block">
+        <div className="sticky top-[68px]">
+          <div className="bg-[#1A1A1B] border border-[#343536] rounded-lg p-3">
+            <h3 className="text-xs font-bold text-[#D7DADC] uppercase tracking-wider mb-2">About this argument</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[#818384]">Status</span>
+                <span className={isEnded ? 'text-[#818384]' : 'text-[#46D160]'}>
+                  {isEnded ? 'Closed' : 'Active'}
+                </span>
               </div>
-            ))}
+              <div className="flex justify-between">
+                <span className="text-[#818384]">Total Votes</span>
+                <span className="text-[#D7DADC]">{totalVotes}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#818384]">Upvotes</span>
+                <span className="text-[#D7DADC]">{argument_.upvote_count}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#818384]">Comments</span>
+                <span className="text-[#D7DADC]">{comments.length}</span>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
